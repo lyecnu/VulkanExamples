@@ -57,25 +57,12 @@ public:
 	VulkanExample() : VulkanExampleBase()
 	{
 		title = "Triangle";
+		camera.type = Camera::CameraType::lookat;
 	}
 
 	~VulkanExample() override
 	{
 		// todo
-	}
-
-	void prepare() override
-	{
-		VulkanExampleBase::prepare();
-		createSynchronizationPrimitives();
-		//createCommandBuffers();
-		//createVertexBuffer();
-		//createUniformBuffers();
-		//createDescriptorSetLayout();
-		//createDescriptorPool();
-		//createDescriptorSets();
-		//createPipelines();
-		prepared = true;
 	}
 
 	void createSynchronizationPrimitives()
@@ -110,6 +97,58 @@ public:
 		}
 	}
 
+	void createCommandBuffers()
+	{
+		VkCommandPoolCreateInfo commandPoolCreateInfo
+		{
+			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+			.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+			.queueFamilyIndex = swapChain.queueNodeIndex
+		};
+		VK_CHECK_RESULT(vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &commandPool));
+
+		VkCommandBufferAllocateInfo commandBufferAllocateInfo
+		{
+			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+			.commandPool = commandPool,
+			.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+			.commandBufferCount = static_cast<uint32_t>(commandBuffers.size())
+		};
+	}
+
+	void createVertexBuffer()
+	{
+		std::vector<Vertex> vertexBuffer =
+		{
+			{ {  1.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
+			{ { -1.0f,  1.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
+			{ {  0.0f, -1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
+		};
+
+		VkBufferCreateInfo vertexBufferCreateInfo
+		{
+
+		};
+
+		vkCreateBuffer(device, &vertexBufferCreateInfo, nullptr, &vertices.buffer);
+			UniformBuffer
+	}
+
+
+	void prepare() override
+	{
+		VulkanExampleBase::prepare();
+		createSynchronizationPrimitives();
+		//createCommandBuffers();
+		//createVertexBuffer();
+		//createUniformBuffers();
+		//createDescriptorSetLayout();
+		//createDescriptorPool();
+		//createDescriptorSets();
+		//createPipelines();
+		prepared = true;
+	}
+
 	void render() override
 	{
 		if (!prepared)
@@ -127,7 +166,17 @@ public:
 			windowResize();
 			return;
 		}
-		else if (result != VK_SUCCESS)
+		else if ((result != VK_SUCCESS) && (result != VK_SUBOPTIMAL_KHR))
+		{
+			throw std::runtime_error("failed to acquire swap chain image!");
+		}
+
+		ShaderData shaderData{};
+		shaderData.projectionMatrix = camera.matrices.perspective;
+		shaderData.viewMatrix = camera.matrices.view;
+		shaderData.modelMatrix = glm::mat4(1.0f);
+		memccpy(uniformBuffers[currentFrame].mapped, &shaderData, sizeof(ShaderData), sizeof(ShaderData));
+
 	}
 
 };
