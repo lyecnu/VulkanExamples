@@ -44,7 +44,7 @@ public:
 	VkPipeline pipeline{ VK_NULL_HANDLE };
 	VkDescriptorSetLayout descriptorSetLayout{ VK_NULL_HANDLE };
 
-	std::vector<VkSemaphore> presentCompleteSemaphores{};
+	std::array<VkSemaphore, MAX_CONCURRENT_FRAMES> presentCompleteSemaphores{};
 	std::vector<VkSemaphore> renderCompleteSemaphores{};
 
 	VkCommandPool commandPool{ VK_NULL_HANDLE };
@@ -80,17 +80,34 @@ public:
 
 	void createSynchronizationPrimitives()
 	{
-		for (uint32_t i = 0; i < MAX_CONCURRENT_FRAMES; i++)
+		for (auto& fence : waitFences)
 		{
 			VkFenceCreateInfo fenceCreateInfo
 			{
 				.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
 				.flags = VK_FENCE_CREATE_SIGNALED_BIT
 			};
-			VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, nullptr, &waitFences[i]));
+			VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, nullptr, &fence));
 		}
 
-		presentCompleteSemaphores
+		for (auto& semaphore : presentCompleteSemaphores)
+		{
+			VkSemaphoreCreateInfo semaphoreCreateInfo
+			{
+				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+			};
+			VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &semaphore));
+		}
+
+		renderCompleteSemaphores.resize(swapChain.images.size());
+		for (auto& semaphore : renderCompleteSemaphores)
+		{
+			VkSemaphoreCreateInfo semaphoreCreateInfo
+			{
+				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+			};
+			VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &semaphore));
+		}
 	}
 
 	void render() override
@@ -104,7 +121,13 @@ public:
 		VK_CHECK_RESULT(vkResetFences(device, 1, &waitFences[currentFrame]));
 
 		uint32_t imageIndex;
-		vkAcquireNextImageKHR(device, swapChain.swapChain, UINT64_MAX, presentCompleteSemaphores, VK_NULL_HANDLE, imageIndex);
+		auto result = vkAcquireNextImageKHR(device, swapChain.swapChain, UINT64_MAX, presentCompleteSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+		if ((result == VK_ERROR_OUT_OF_DATE_KHR))
+		{
+			windowResize();
+			return;
+		}
+		else if (result != VK_SUCCESS)
 	}
 
 };

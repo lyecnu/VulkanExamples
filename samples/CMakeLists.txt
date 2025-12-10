@@ -87,7 +87,7 @@ function(buildExamples)
 endfunction(buildExamples)
 
 set(EXAMPLES
-    triangle
+    Triangle
 )
 
 buildExamples()
